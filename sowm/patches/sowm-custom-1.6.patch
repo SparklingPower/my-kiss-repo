@@ -1,0 +1,94 @@
+--- sowm-1.6/config.def.h
++++ sowm-1.6-custom/config.def.h
+@@ -5,32 +5,27 @@
+ 
+ const char* menu[]    = {"dmenu_run",      0};
+ const char* term[]    = {"st",             0};
+-const char* scrot[]   = {"scr",            0};
+-const char* briup[]   = {"bri", "10", "+", 0};
+-const char* bridown[] = {"bri", "10", "-", 0};
+-const char* voldown[] = {"amixer", "sset", "Master", "5%-",         0};
+-const char* volup[]   = {"amixer", "sset", "Master", "5%+",         0};
+-const char* volmute[] = {"amixer", "sset", "Master", "toggle",      0};
+-const char* colors[]  = {"bud", "/home/goldie/Pictures/Wallpapers", 0};
+ 
+ static struct key keys[] = {
+     {MOD,      XK_q,   win_kill,   {0}},
+     {MOD,      XK_c,   win_center, {0}},
+     {MOD,      XK_f,   win_fs,     {0}},
+ 
++    {MOD,           XK_k,  win_move,  {.com = (const char*[]){"move",   "n"}, .i = 10}},
++    {MOD,           XK_j,  win_move,  {.com = (const char*[]){"move",   "s"}, .i = 10}},
++    {MOD,           XK_l,  win_move,  {.com = (const char*[]){"move",   "e"}, .i = 10}},
++    {MOD,           XK_h,  win_move,  {.com = (const char*[]){"move",   "w"}, .i = 10}},
++
++    {MOD|ShiftMask, XK_k,  win_move,  {.com = (const char*[]){"resize", "n"}, .i = 10}},
++    {MOD|ShiftMask, XK_j,  win_move,  {.com = (const char*[]){"resize", "s"}, .i = 10}},
++    {MOD|ShiftMask, XK_l,  win_move,  {.com = (const char*[]){"resize", "e"}, .i = 10}},
++    {MOD|ShiftMask, XK_h,  win_move,  {.com = (const char*[]){"resize", "w"}, .i = 10}},
++
+     {Mod1Mask,           XK_Tab, win_next,   {0}},
+     {Mod1Mask|ShiftMask, XK_Tab, win_prev,   {0}},
+ 
+     {MOD, XK_d,      run, {.com = menu}},
+-    {MOD, XK_w,      run, {.com = colors}},
+-    {MOD, XK_p,      run, {.com = scrot}},
+     {MOD, XK_Return, run, {.com = term}},
+-
+-    {0,   XF86XK_AudioLowerVolume,  run, {.com = voldown}},
+-    {0,   XF86XK_AudioRaiseVolume,  run, {.com = volup}},
+-    {0,   XF86XK_AudioMute,         run, {.com = volmute}},
+-    {0,   XF86XK_MonBrightnessUp,   run, {.com = briup}},
+-    {0,   XF86XK_MonBrightnessDown, run, {.com = bridown}},
+ 
+     {MOD,           XK_1, ws_go,     {.i = 1}},
+     {MOD|ShiftMask, XK_1, win_to_ws, {.i = 1}},
+--- sowm-1.6/sowm.c
++++ sowm-1.6-custom/sowm.c
+@@ -31,6 +31,19 @@
+ 
+ #include "config.h"
+ 
++void win_move(const Arg arg) {
++    int  r = arg.com[0][0] == 'r';
++    char m = arg.com[1][0];
++
++    win_size(cur->w, &wx, &wy, &ww, &wh);
++
++    XMoveResizeWindow(d, cur->w, \
++        wx + (r ? 0 : m == 'e' ?  arg.i : m == 'w' ? -arg.i : 0),
++        wy + (r ? 0 : m == 'n' ? -arg.i : m == 's' ?  arg.i : 0),
++        MAX(10, ww + (r ? m == 'e' ?  arg.i : m == 'w' ? -arg.i : 0 : 0)),
++        MAX(10, wh + (r ? m == 'n' ? -arg.i : m == 's' ?  arg.i : 0 : 0)));
++}
++
+ void win_focus(client *c) {
+     cur = c;
+     XSetInputFocus(d, cur->w, RevertToParent, CurrentTime);
+@@ -122,7 +135,15 @@
+ }
+ 
+ void win_kill(const Arg arg) {
+-    if (cur) XKillClient(d, cur->w);
++    if (!cur) return;
++
++    XSendEvent(d, cur->w, False, NoEventMask, &(XEvent){
++        .type                 = ClientMessage,
++        .xclient.window       = cur->w,
++        .xclient.message_type = XInternAtom(d, "WM_PROTOCOLS", True),
++        .xclient.data.l[0]    = XInternAtom(d, "WM_DELETE_WINDOW", True),
++        .xclient.data.l[1]    = CurrentTime
++    });
+ }
+ 
+ void win_center(const Arg arg) {
+--- sowm-1.6/sowm.h
++++ sowm-1.6-custom/sowm.h
+@@ -51,6 +51,7 @@
+ void win_kill(const Arg arg);
+ void win_prev(const Arg arg);
+ void win_next(const Arg arg);
++void win_move(const Arg arg);
+ void win_to_ws(const Arg arg);
+ void ws_go(const Arg arg);
+ 
