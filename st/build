@@ -5,6 +5,7 @@ for patch in *.patch; do
 done
 
 sed -i 's|Liberation Mono|Cozette Vector|g' config.h
+sed -i 's|borderpx = 2|borderpx = 20|g' config.h
 sed -i 's|cursorshape = 2|cursorshape = 4|g' config.h
 
 make
