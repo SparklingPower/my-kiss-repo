@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+for patch in *.patch; do
+    patch -p1 < "$patch"
+done
+
+sed -i 's|Liberation Mono|Cozette Vector|g' config.h
+sed -i 's|cursorshape = 2|cursorshape = 4|g' config.h
+
+make
+make PREFIX=/usr DESTDIR="$1" install
